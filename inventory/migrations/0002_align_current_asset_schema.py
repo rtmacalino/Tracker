@@ -13,6 +13,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.CreateModel(
+            name="AssetType",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(max_length=80, unique=True)),
+                ("description", models.CharField(blank=True, max_length=255)),
+            ],
+            options={"ordering": ["name"]},
+        ),
         migrations.RemoveField(model_name="asset", name="asset_tag"),
         migrations.RemoveField(model_name="asset", name="serial_number"),
         migrations.RemoveField(model_name="asset", name="assigned_to"),
@@ -91,15 +100,6 @@ class Migration(migrations.Migration):
                 related_name="updated_assets",
                 to=settings.AUTH_USER_MODEL,
             ),
-        ),
-        migrations.CreateModel(
-            name="AssetType",
-            fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("name", models.CharField(max_length=80, unique=True)),
-                ("description", models.CharField(blank=True, max_length=255)),
-            ],
-            options={"ordering": ["name"]},
         ),
         migrations.CreateModel(
             name="AssetTypeStatus",
