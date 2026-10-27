@@ -12,6 +12,9 @@ urlpatterns = [
     path("assets/columns/save/", views.columns_save, name="columns_save"),
     path("assets/columns/manage/", views.columns_manage, name="columns_manage"),
     path("assets/<int:pk>/", views.asset_detail, name="asset_detail"),
+    path("assets/<int:pk>/attachments/upload/", views.asset_attachment_upload, name="asset_attachment_upload"),
+    path("assets/<int:pk>/attachments/<int:attachment_pk>/download/", views.asset_attachment_download, name="asset_attachment_download"),
+    path("assets/<int:pk>/attachments/<int:attachment_pk>/delete/", views.asset_attachment_delete, name="asset_attachment_delete"),
     path("assets/<int:pk>/edit/", views.asset_edit, name="asset_edit"),
     path("assets/<int:pk>/delete/", views.asset_delete, name="asset_delete"),
 ]
