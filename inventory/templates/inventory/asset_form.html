@@ -26,6 +26,42 @@
     </form>
   </section>
 
+  {% if asset %}
+    <section class="panel" style="margin-top: 24px;">
+      <div class="panel-body">
+        <h2>Attachments ({{ attachments|length }})</h2>
+        <p class="helptext">Up to 10 files per upload, 20 MB per file. Allowed: PDF, common images, text/CSV, Office documents, ZIP, logs and configuration files.</p>
+        {% if attachments %}
+          <ul>
+            {% for attachment in attachments %}
+              <li style="margin-bottom: 12px;">
+                <a href="{% url 'inventory:asset_attachment_download' asset.pk attachment.pk %}">{{ attachment.original_name }}</a>
+                <span class="helptext">({{ attachment.file_size|filesizeformat }}) · {{ attachment.uploaded_at|date:"Y-m-d H:i" }} · {{ attachment.uploaded_by|default:"former user" }}</span>
+                <form method="post" action="{% url 'inventory:asset_attachment_delete' asset.pk attachment.pk %}" style="display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="return_to" value="edit">
+                  <button class="btn btn-danger" type="submit">Delete attachment</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>No attachments have been uploaded for this record.</p>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" action="{% url 'inventory:asset_attachment_upload' asset.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="return_to" value="edit">
+          <div class="field">
+            <label for="id_attachment_files">Add files</label>
+            <input id="id_attachment_files" type="file" name="files" multiple required>
+          </div>
+          <button class="btn btn-primary" type="submit">Upload attachments</button>
+        </form>
+      </div>
+    </section>
+  {% endif %}
+
   <script>
     (function () {
       var typeSelect = document.getElementById("id_asset_type");
