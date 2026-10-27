@@ -124,3 +124,36 @@ class AssetAttachmentTests(VisibleAssetsTests):
             )
         )
         self.assertEqual(response.status_code, 404)
+
+
+    def test_view_record_only_displays_downloads_not_management_controls(self):
+        self.client.force_login(self.admin_user)
+        response = self.client.get(
+            reverse("inventory:asset_detail", args=[self.vendor_asset.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Attachments")
+        self.assertNotContains(response, "Upload attachments")
+        self.assertNotContains(response, "Delete attachment")
+
+    def test_edit_record_displays_attachment_management_controls(self):
+        self.client.force_login(self.admin_user)
+        response = self.client.get(
+            reverse("inventory:asset_edit", args=[self.vendor_asset.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Add files")
+        self.assertContains(response, "Upload attachments")
+        self.assertContains(response, "Delete attachment")
+
+    def test_attachment_management_returns_to_edit_record_when_requested(self):
+        self.client.force_login(self.admin_user)
+        upload = SimpleUploadedFile("report.pdf", b"report bytes")
+        response = self.client.post(
+            reverse("inventory:asset_attachment_upload", args=[self.vendor_asset.pk]),
+            {"files": [upload], "return_to": "edit"},
+        )
+        self.assertRedirects(
+            response,
+            reverse("inventory:asset_edit", args=[self.vendor_asset.pk]),
+        )
