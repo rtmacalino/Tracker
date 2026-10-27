@@ -54,7 +54,7 @@ python manage.py test inventory
 
 ## Asset attachments
 
-The asset detail page supports multiple attachments per FTTB/OLT record. Attachment metadata is stored in PostgreSQL and file bytes are stored under `MEDIA_ROOT/asset_attachments/<asset-id>/`. Downloads go through an authenticated Django view that checks the user's asset visibility; files should **not** be exposed through a public static/media URL.
+The asset edit page supports adding and deleting multiple attachments per FTTB/OLT record; the read-only asset detail page lists attachments for download only. Attachment metadata is stored in PostgreSQL and file bytes are stored under `MEDIA_ROOT/asset_attachments/<asset-id>/`. Downloads go through an authenticated Django view that checks the user's asset visibility; files should **not** be exposed through a public static/media URL.
 
 - Maximum 10 files per upload request.
 - Maximum 20 MB per file (also configure Apache's request-body limit appropriately).
