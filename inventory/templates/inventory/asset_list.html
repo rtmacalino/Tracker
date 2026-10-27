@@ -350,7 +350,7 @@
               {% endfor %}
               <td class="row-actions">
                 {% if asset.can_edit %}
-                  <a class="btn btn-small" href="{% url 'inventory:asset_edit' asset.pk %}">Edit</a>
+                  <a class="btn btn-small" href="{% url 'inventory:asset_edit' asset.pk %}">Edit Record</a>
                 {% endif %}
                 {% if asset.can_delete %}
                   <a class="btn btn-small btn-danger" href="{% url 'inventory:asset_delete' asset.pk %}">Delete</a>
