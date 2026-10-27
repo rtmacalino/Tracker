@@ -1,153 +1,86 @@
-"""
-Tracker settings.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.1/topics/settings/
-
-For the full list of settings and their values, see
-https://docs.djangoproject.com/en/6.1/ref/settings/
-"""
+"""Settings for the Tracker Django application."""
 
 import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3t&i2g%m##902=uth&jjfs)voq!4$oe!rh4dt++djj$i@-qj_9'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+def _required_env(name):
+    """Return a required environment variable without exposing its value."""
+    value = os.environ.get(name)
+    if not value:
+        raise ImproperlyConfigured(
+            f"{name} is not set. Load the Tracker environment before starting Django."
+        )
+    return value
 
 
-# Application definition
+def _env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+
+
+SECRET_KEY = _required_env("DJANGO_SECRET_KEY")
+DEBUG = _env_bool("DJANGO_DEBUG", False)
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get(
+        "DJANGO_ALLOWED_HOSTS", "10.10.10.124,localhost,127.0.0.1"
+    ).split(",")
+    if host.strip()
+]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "DJANGO_CSRF_TRUSTED_ORIGINS", "http://10.10.10.124"
+    ).split(",")
+    if origin.strip()
+]
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.postgres",
+    "inventory",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'tracker.urls'
+ROOT_URLCONF = "tracker.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'tracker.wsgi.application'
-
-
-# Database
-# https://docs.djangoproject.com/en/6.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-
-# Password validation
-# https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
-
-# Internationalization
-# https://docs.djangoproject.com/en/6.1/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
-USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.1/howto/static-files/
-
-STATIC_URL = 'static/'
-
-
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
-
-
-# ---------------------------------------------------------------------------
-# Tracker deployment overrides
-# ---------------------------------------------------------------------------
-DEBUG = False
-SECRET_KEY = '%q5#h8*b9hp36+-9!*qhc%7qbt)%o7=9c+x(z@&cbl-88)5i7m'
-ALLOWED_HOSTS = ["10.10.10.124", "localhost", "127.0.0.1"]
-CSRF_TRUSTED_ORIGINS = ["http://10.10.10.124"]
-FORCE_SCRIPT_NAME = "/Tracker"
-STATIC_URL = "/Tracker/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
-
-def _required_env(name):
-    """Fail fast when a secret is missing from the environment."""
-    value = os.environ.get(name)
-    if not value:
-        raise ImproperlyConfigured(
-            f"{name} is not set. Load /etc/tracker/tracker.env before running."
-        )
-    return value
-
+WSGI_APPLICATION = "tracker.wsgi.application"
+ASGI_APPLICATION = "tracker.asgi.application"
 
 DATABASES = {
     "default": {
@@ -157,12 +90,46 @@ DATABASES = {
         "PASSWORD": _required_env("TRACKER_DB_PASSWORD"),
         "HOST": os.environ.get("TRACKER_DB_HOST", "10.10.10.137"),
         "PORT": os.environ.get("TRACKER_DB_PORT", "5432"),
-        "CONN_MAX_AGE": 60,
+        "CONN_MAX_AGE": int(os.environ.get("TRACKER_DB_CONN_MAX_AGE", "60")),
     }
 }
 
-INSTALLED_APPS += ["django.contrib.postgres", "inventory"]
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = os.environ.get("DJANGO_TIME_ZONE", "Asia/Manila")
+USE_I18N = True
+USE_TZ = True
+
+FORCE_SCRIPT_NAME = "/Tracker"
+STATIC_URL = "/Tracker/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+MEDIA_URL = "/Tracker/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_URL = "/Tracker/accounts/login/"
 LOGIN_REDIRECT_URL = "/Tracker/"
 LOGOUT_REDIRECT_URL = "/Tracker/accounts/login/"
+
+EMAIL_BACKEND = os.environ.get(
+    "DJANGO_EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+
+# Secure defaults for production. Set DJANGO_SECURE_COOKIES=0 only for local
+# HTTP development; production should terminate HTTPS and enable these flags.
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", not DEBUG)
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", not DEBUG)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "same-origin"
+if not DEBUG:
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+    SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", False)
