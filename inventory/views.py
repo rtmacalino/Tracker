@@ -1,11 +1,12 @@
 import csv
+import os
 from io import BytesIO
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import FileResponse, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -28,6 +29,7 @@ from .grid import (
 )
 from .models import (
     Asset,
+    AssetAttachment,
     AssetType,
     AssetTypeStatus,
     GridColumnSettings,
@@ -355,11 +357,90 @@ def asset_detail(request, pk):
         "inventory/asset_detail.html",
         {
             "asset": asset,
+            "attachments": asset.attachments.select_related("uploaded_by").all(),
             "can_change": _can_change(request.user, asset),
             "can_delete": _can_delete(request.user, asset),
             "active_nav": "assets",
         },
     )
+
+
+ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024
+ATTACHMENT_MAX_FILES = 10
+ATTACHMENT_ALLOWED_EXTENSIONS = {
+    ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt", ".csv",
+    ".xlsx", ".docx", ".doc", ".zip", ".log", ".cfg", ".conf", ".json", ".xml",
+}
+
+
+@login_required
+@require_POST
+def asset_attachment_upload(request, pk):
+    asset = get_object_or_404(visible_assets(request.user), pk=pk)
+    if not _can_change(request.user, asset):
+        raise PermissionDenied
+
+    uploads = request.FILES.getlist("files")
+    if not uploads:
+        messages.error(request, "Choose at least one file to upload.")
+        return redirect(asset)
+    if len(uploads) > ATTACHMENT_MAX_FILES:
+        messages.error(request, f"Upload no more than {ATTACHMENT_MAX_FILES} files at a time.")
+        return redirect(asset)
+
+    errors = []
+    for uploaded in uploads:
+        name = os.path.basename(uploaded.name).replace("\\", "_")[:255]
+        extension = os.path.splitext(name)[1].lower()
+        if extension not in ATTACHMENT_ALLOWED_EXTENSIONS:
+            errors.append(f"{name}: this file type is not allowed.")
+        elif uploaded.size > ATTACHMENT_MAX_BYTES:
+            errors.append(f"{name}: exceeds the 20 MB per-file limit.")
+    if errors:
+        for error in errors:
+            messages.error(request, error)
+        return redirect(asset)
+
+    for uploaded in uploads:
+        name = os.path.basename(uploaded.name).replace("\\", "_")[:255]
+        AssetAttachment.objects.create(
+            asset=asset,
+            file=uploaded,
+            original_name=name,
+            file_size=uploaded.size,
+            uploaded_by=request.user,
+        )
+    messages.success(request, f"{len(uploads)} attachment(s) uploaded.")
+    return redirect(asset)
+
+
+@login_required
+def asset_attachment_download(request, pk, attachment_pk):
+    asset = get_object_or_404(visible_assets(request.user), pk=pk)
+    attachment = get_object_or_404(AssetAttachment, pk=attachment_pk, asset=asset)
+    try:
+        file_handle = attachment.file.open("rb")
+    except (FileNotFoundError, OSError):
+        messages.error(request, "The stored attachment file is unavailable.")
+        return redirect(asset)
+    response = FileResponse(
+        file_handle, as_attachment=True, filename=attachment.original_name
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@login_required
+@require_POST
+def asset_attachment_delete(request, pk, attachment_pk):
+    asset = get_object_or_404(visible_assets(request.user), pk=pk)
+    if not _can_change(request.user, asset):
+        raise PermissionDenied
+    attachment = get_object_or_404(AssetAttachment, pk=attachment_pk, asset=asset)
+    attachment.delete()
+    messages.success(request, "Attachment deleted.")
+    return redirect(asset)
 
 
 @login_required
