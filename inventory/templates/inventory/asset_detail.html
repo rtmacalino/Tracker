@@ -21,7 +21,7 @@
 
       {% if can_change or can_delete %}
         <div class="actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line);">
-          {% if can_change %}<a class="btn btn-primary" href="{% url 'inventory:asset_edit' asset.pk %}">Edit asset</a>{% endif %}
+          {% if can_change %}<a class="btn btn-primary" href="{% url 'inventory:asset_edit' asset.pk %}">Edit Record</a>{% endif %}
           {% if can_delete %}<a class="btn btn-danger" href="{% url 'inventory:asset_delete' asset.pk %}">Delete</a>{% endif %}
           <a class="btn" href="{% url 'inventory:asset_list' %}">Cancel</a>
         </div>
