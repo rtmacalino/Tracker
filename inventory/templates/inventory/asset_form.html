@@ -6,7 +6,7 @@
   <p class="lede">Fields marked with an asterisk are required.</p>
 
   <section class="panel">
-    <form class="panel-body" method="post" novalidate id="assetForm">
+    <form class="panel-body" method="post" enctype="multipart/form-data" novalidate id="assetForm">
       {% csrf_token %}
       {% if form.non_field_errors %}<ul class="errorlist">{{ form.non_field_errors }}</ul>{% endif %}
       <div class="form-grid">
@@ -20,12 +20,26 @@
         {% endfor %}
       </div>
       <div class="actions">
-        <button class="btn btn-primary" type="submit">Save asset</button>
+        <button class="btn btn-primary" type="submit">Save Record</button>
         <a class="btn" href="{% if asset %}{{ asset.get_absolute_url }}{% else %}{% url 'inventory:asset_list' %}{% endif %}">Cancel</a>
       </div>
     </form>
   </section>
 
+  {% if asset %}
+  <section class="panel" style="margin-top:20px;"><div class="panel-body"><h2>Attachments</h2>
+    {% if attachments %}<ul>{% for attachment in attachments %}<li>
+      <strong>{{ attachment.original_filename }}</strong> ({{ attachment.size|filesizeformat }})
+      <a class="btn" href="{% url 'inventory:asset_attachment_download' asset.pk attachment.pk %}">Download</a>
+      <form method="post" action="{% url 'inventory:asset_attachment_delete' asset.pk attachment.pk %}" style="display:inline;">{% csrf_token %}<button class="btn btn-danger" type="submit">Delete</button></form>
+    </li>{% endfor %}</ul>{% else %}<p>No attachments have been added to this record.</p>{% endif %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'inventory:asset_attachment_upload' asset.pk %}">{% csrf_token %}
+      <label for="id_attachment_files">Add attachments</label>
+      <input id="id_attachment_files" type="file" name="files" multiple required accept=".pdf,.png,.jpg,.jpeg,.gif,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip">
+      <p class="helptext">Up to 10 files per upload, 20 MB each.</p><button class="btn btn-primary" type="submit">Upload attachments</button>
+    </form>
+  </div></section>
+  {% endif %}
   <script>
     (function () {
       var typeSelect = document.getElementById("id_asset_type");

@@ -265,3 +265,29 @@ def all_status_options():
             options.append((row.key, row.label))
             seen.add(row.key)
     return options
+
+class AssetAttachment(models.Model):
+    """File metadata for an asset; bytes live in configured storage."""
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="attachments")
+    file = models.FileField(upload_to="asset_attachments/%Y/%m/")
+    original_filename = models.CharField(max_length=255)
+    size = models.PositiveBigIntegerField()
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="uploaded_asset_attachments")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at", "-pk"]
+
+    def __str__(self):
+        return self.original_filename
+
+
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+
+@receiver(post_delete, sender=AssetAttachment)
+def delete_attachment_file(sender, instance, **kwargs):
+    if instance.file:
+        instance.file.delete(save=False)

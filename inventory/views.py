@@ -1,11 +1,13 @@
 import csv
+import os
+from pathlib import Path
 from io import BytesIO
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -28,6 +30,7 @@ from .grid import (
 )
 from .models import (
     Asset,
+    AssetAttachment,
     AssetType,
     AssetTypeStatus,
     GridColumnSettings,
@@ -355,11 +358,73 @@ def asset_detail(request, pk):
         "inventory/asset_detail.html",
         {
             "asset": asset,
+            "attachments": asset.attachments.select_related("uploaded_by").all(),
             "can_change": _can_change(request.user, asset),
             "can_delete": _can_delete(request.user, asset),
             "active_nav": "assets",
         },
     )
+
+
+ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024
+ATTACHMENT_MAX_FILES = 10
+ATTACHMENT_ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".gif", ".txt", ".csv", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".zip"}
+
+
+@login_required
+@require_POST
+def asset_attachment_upload(request, pk):
+    asset = get_object_or_404(visible_assets(request.user), pk=pk)
+    if not _can_change(request.user, asset):
+        raise PermissionDenied
+    uploads = request.FILES.getlist("files")
+    if not uploads or len(uploads) > ATTACHMENT_MAX_FILES:
+        messages.error(request, "Choose 1–10 files to upload.")
+        return redirect("inventory:asset_edit", pk=asset.pk)
+    errors = []
+    for upload in uploads:
+        suffix = Path(upload.name.replace("\\", "/")).suffix.lower()
+        if suffix not in ATTACHMENT_ALLOWED_EXTENSIONS:
+            errors.append(f"{upload.name}: file type is not allowed.")
+        elif upload.size > ATTACHMENT_MAX_BYTES:
+            errors.append(f"{upload.name}: file exceeds the 20 MB limit.")
+    if errors:
+        for error in errors:
+            messages.error(request, error)
+        return redirect("inventory:asset_edit", pk=asset.pk)
+    for upload in uploads:
+        name = os.path.basename(upload.name.replace("\\", "/"))[:255] or "attachment"
+        attachment = AssetAttachment(asset=asset, original_filename=name, size=upload.size, uploaded_by=request.user)
+        attachment.file.save(name, upload, save=False)
+        attachment.save()
+    messages.success(request, f"{len(uploads)} attachment(s) uploaded.")
+    return redirect("inventory:asset_edit", pk=asset.pk)
+
+
+@login_required
+def asset_attachment_download(request, pk, attachment_pk):
+    asset = get_object_or_404(visible_assets(request.user), pk=pk)
+    attachment = get_object_or_404(AssetAttachment, pk=attachment_pk, asset=asset)
+    try:
+        stream = attachment.file.open("rb")
+    except (FileNotFoundError, OSError, ValueError):
+        raise Http404("Attachment file is not available.")
+    response = FileResponse(stream, as_attachment=True, filename=attachment.original_filename)
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@login_required
+@require_POST
+def asset_attachment_delete(request, pk, attachment_pk):
+    asset = get_object_or_404(visible_assets(request.user), pk=pk)
+    if not _can_change(request.user, asset):
+        raise PermissionDenied
+    attachment = get_object_or_404(AssetAttachment, pk=attachment_pk, asset=asset)
+    attachment.delete()
+    messages.success(request, "Attachment deleted.")
+    return redirect("inventory:asset_edit", pk=asset.pk)
 
 
 @login_required
@@ -407,7 +472,7 @@ def asset_edit(request, pk):
     return render(
         request,
         "inventory/asset_form.html",
-        {"form": form, "asset": asset, "active_nav": "assets", "title": "Edit asset"},
+        {"form": form, "asset": asset, "attachments": asset.attachments.select_related("uploaded_by").all(), "can_change": True, "active_nav": "assets", "title": "Edit Record"},
     )
 
 
