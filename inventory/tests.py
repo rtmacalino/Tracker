@@ -16,7 +16,7 @@ class AssetAttachmentWorkflowTests(TestCase):
         self.addCleanup(override.disable)
         self.user = get_user_model().objects.create_superuser(username="attach-admin", email="admin@example.invalid", password="test-password")
         self.client.force_login(self.user)
-        self.asset_type = AssetType.objects.create(name="FTTB")
+        self.asset_type, _ = AssetType.objects.get_or_create(name="FTTB")
         self.asset = Asset.objects.create(name="Test record", asset_type=self.asset_type)
 
     def upload(self, name="report.pdf", content=b"sample file"):
