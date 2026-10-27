@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.urls import reverse
 
 from .grid import default_allowed_columns
@@ -198,6 +200,43 @@ class Asset(models.Model):
         if self.custodian:
             parts.append(self.custodian.get_username())
         return " / ".join(parts) if parts else "Unassigned"
+
+
+def asset_attachment_upload_to(instance, filename):
+    """Keep uploaded files grouped by asset; downloads are served through an access-checked view."""
+    return f"asset_attachments/{instance.asset_id}/{filename}"
+
+
+class AssetAttachment(models.Model):
+    """A file associated with one asset record."""
+
+    asset = models.ForeignKey(
+        Asset, on_delete=models.CASCADE, related_name="attachments"
+    )
+    file = models.FileField(upload_to=asset_attachment_upload_to)
+    original_name = models.CharField(max_length=255)
+    file_size = models.PositiveBigIntegerField(default=0)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="uploaded_asset_attachments",
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at", "original_name"]
+
+    def __str__(self):
+        return self.original_name
+
+
+@receiver(post_delete, sender=AssetAttachment)
+def delete_asset_attachment_file(sender, instance, **kwargs):
+    """Remove the physical file when an attachment row is deleted."""
+    if instance.file:
+        instance.file.delete(save=False)
 
 
 class FTTB(Asset):
