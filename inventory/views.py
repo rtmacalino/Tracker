@@ -411,6 +411,8 @@ def asset_attachment_upload(request, pk):
             uploaded_by=request.user,
         )
     messages.success(request, f"{len(uploads)} attachment(s) uploaded.")
+    if request.POST.get("return_to") == "edit":
+        return redirect("inventory:asset_edit", pk=asset.pk)
     return redirect(asset)
 
 
@@ -440,6 +442,8 @@ def asset_attachment_delete(request, pk, attachment_pk):
     attachment = get_object_or_404(AssetAttachment, pk=attachment_pk, asset=asset)
     attachment.delete()
     messages.success(request, "Attachment deleted.")
+    if request.POST.get("return_to") == "edit":
+        return redirect("inventory:asset_edit", pk=asset.pk)
     return redirect(asset)
 
 
@@ -488,7 +492,14 @@ def asset_edit(request, pk):
     return render(
         request,
         "inventory/asset_form.html",
-        {"form": form, "asset": asset, "active_nav": "assets", "title": "Edit asset"},
+        {
+            "form": form,
+            "asset": asset,
+            "attachments": asset.attachments.select_related("uploaded_by").all(),
+            "can_change": _can_change(request.user, asset),
+            "active_nav": "assets",
+            "title": "Edit asset",
+        },
     )
 
 
