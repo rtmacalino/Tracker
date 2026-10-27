@@ -1,9 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser, Group
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
 from django.test import TestCase
 
 from .access import visible_assets
-from .models import Asset, GroupProfile
+from .models import Asset, AssetAttachment, GroupProfile
 
 
 class VisibleAssetsTests(TestCase):
@@ -68,3 +70,57 @@ class VisibleAssetsTests(TestCase):
 
     def test_superuser_sees_all_assets(self):
         self.assertEqual(visible_assets(self.admin_user).count(), 4)
+
+
+
+class AssetAttachmentTests(VisibleAssetsTests):
+    def test_superuser_can_upload_and_download_attachment(self):
+        self.client.force_login(self.admin_user)
+        upload = SimpleUploadedFile(
+            "site-photo.jpg", b"test image bytes", content_type="image/jpeg"
+        )
+        response = self.client.post(
+            reverse("inventory:asset_attachment_upload", args=[self.vendor_asset.pk]),
+            {"files": [upload]},
+        )
+        self.assertRedirects(response, self.vendor_asset.get_absolute_url())
+        attachment = AssetAttachment.objects.get(asset=self.vendor_asset)
+        self.assertEqual(attachment.original_name, "site-photo.jpg")
+        self.assertEqual(attachment.file_size, len(b"test image bytes"))
+
+        response = self.client.get(
+            reverse(
+                "inventory:asset_attachment_download",
+                args=[self.vendor_asset.pk, attachment.pk],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b"".join(response.streaming_content), b"test image bytes")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+
+    def test_disallowed_file_extension_is_rejected(self):
+        self.client.force_login(self.admin_user)
+        upload = SimpleUploadedFile("program.exe", b"not allowed")
+        response = self.client.post(
+            reverse("inventory:asset_attachment_upload", args=[self.vendor_asset.pk]),
+            {"files": [upload]},
+        )
+        self.assertRedirects(response, self.vendor_asset.get_absolute_url())
+        self.assertFalse(AssetAttachment.objects.filter(asset=self.vendor_asset).exists())
+
+    def test_user_cannot_download_attachment_for_invisible_asset(self):
+        attachment = AssetAttachment.objects.create(
+            asset=self.other_asset,
+            file=SimpleUploadedFile("report.pdf", b"private bytes"),
+            original_name="report.pdf",
+            file_size=len(b"private bytes"),
+            uploaded_by=self.other_user,
+        )
+        self.client.force_login(self.vendor_user)
+        response = self.client.get(
+            reverse(
+                "inventory:asset_attachment_download",
+                args=[self.other_asset.pk, attachment.pk],
+            )
+        )
+        self.assertEqual(response.status_code, 404)
