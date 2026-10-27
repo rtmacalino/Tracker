@@ -50,3 +50,16 @@ Run the Django test suite in an environment with the required settings and a tes
 ```sh
 python manage.py test inventory
 ```
+
+
+## Asset attachments
+
+The asset detail page supports multiple attachments per FTTB/OLT record. Attachment metadata is stored in PostgreSQL and file bytes are stored under `MEDIA_ROOT/asset_attachments/<asset-id>/`. Downloads go through an authenticated Django view that checks the user's asset visibility; files should **not** be exposed through a public static/media URL.
+
+- Maximum 10 files per upload request.
+- Maximum 20 MB per file (also configure Apache's request-body limit appropriately).
+- Allowed extensions: PDF, common image formats, text/CSV, Office documents, ZIP, logs and configuration files.
+- Users need the asset's change permission to upload/delete attachments.
+- Back up `MEDIA_ROOT` separately from PostgreSQL.
+- Ensure the Apache/Django service account can write to `MEDIA_ROOT`.
+- Before deployment, review the migration history and run `python manage.py makemigrations --check --dry-run`, `python manage.py check`, and the test suite in the deployment environment.
