@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ asset.name }} &middot; Tracker{% endblock %}
+{% block content %}
+  <p class="lede"><a href="{% url 'inventory:asset_list' %}">&larr; Back to assets</a></p>
+  <h1>{{ asset.name }}</h1>
+  <p class="lede"><span class="tag">#{{ asset.pk }}</span> &middot;
+    {% if asset.asset_type %}<span class="badge">{{ asset.asset_type.name }}</span> &middot; {% endif %}
+    <span class="badge {{ asset.status_slug }}">{{ asset.status_label }}</span></p>
+
+  <section class="panel">
+    <div class="panel-body">
+      <dl class="meta">
+        <dt>Vendor</dt><dd>{{ asset.vendor|default:"— (admin only)" }}</dd>
+        <dt>Custodian</dt><dd>{{ asset.custodian|default:"—" }}</dd>
+        <dt>Added by</dt><dd>{{ asset.created_by|default:"—" }}</dd>
+        <dt>Added</dt><dd>{{ asset.created_at|date:"Y-m-d H:i" }}</dd>
+        <dt>Updated by</dt><dd>{{ asset.updated_by|default:"—" }}</dd>
+        <dt>Updated</dt><dd>{{ asset.updated_at|date:"Y-m-d H:i" }}</dd>
+        <dt>Description</dt><dd>{{ asset.description|default:"—"|linebreaksbr }}</dd>
+      </dl>
+
+      {% if can_change or can_delete %}
+        <div class="actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line);">
+          {% if can_change %}<a class="btn btn-primary" href="{% url 'inventory:asset_edit' asset.pk %}">Edit asset</a>{% endif %}
+          {% if can_delete %}<a class="btn btn-danger" href="{% url 'inventory:asset_delete' asset.pk %}">Delete</a>{% endif %}
+          <a class="btn" href="{% url 'inventory:asset_list' %}">Cancel</a>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

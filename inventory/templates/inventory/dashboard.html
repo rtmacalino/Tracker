@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Dashboard &middot; Tracker{% endblock %}
+{% block content %}
+  <h1>Dashboard</h1>
+  <p class="lede">{{ total }} asset{{ total|pluralize }} tracked across the inventory.</p>
+
+  <div class="grid cards">
+    <div class="card"><div class="label">Total assets</div><div class="value">{{ total }}</div></div>
+    {% for card in status_cards %}
+      <div class="card"><div class="label">{{ card.label }}</div><div class="value">{{ card.count }}</div></div>
+    {% endfor %}
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Recently added</h2>
+      {% if show_all %}
+        <a class="btn btn-small" href="{% url 'inventory:asset_list' %}">View all</a>
+      {% endif %}
+    </div>
+    {% if recent %}
+      <table>
+        <thead><tr><th>Name</th><th>Status</th><th>Scope</th></tr></thead>
+        <tbody>
+        {% for asset in recent %}
+          <tr>
+            <td><a href="{{ asset.get_absolute_url }}">{{ asset.name }}</a></td>
+            <td><span class="badge {{ asset.status_slug }}">{{ asset.get_status_display }}</span></td>
+            <td>{{ asset.scope_label }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        <p>No assets yet.</p>
+        {% if perms.inventory.add_asset %}<a class="btn btn-primary" href="{% url 'inventory:asset_create' %}">Add your first asset</a>{% endif %}
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

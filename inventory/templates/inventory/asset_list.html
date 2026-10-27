@@ -1,0 +1,685 @@
+{% extends "base.html" %}
+{% block title %}Assets &middot; Tracker{% endblock %}
+{% block extra_head %}
+<style>
+  .list-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .toolbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .settings-wrap, .export-wrap { position: relative; }
+  .settings-wrap summary, .export-wrap summary { list-style: none; }
+  .settings-wrap summary::-webkit-details-marker, .export-wrap summary::-webkit-details-marker { display: none; }
+  .icon-btn {
+    width: 39px; height: 39px; padding: 0; justify-content: center;
+    color: #cbd5e1; background: var(--surface-2);
+  }
+  .icon-btn:hover { color: var(--text); }
+  .icon-btn svg { pointer-events: none; }
+  .settings-wrap[open] .icon-btn {
+    color: var(--accent); background: rgba(52,211,153,.09);
+    border-color: rgba(52,211,153,.45);
+  }
+  .export-btn { list-style: none; cursor: pointer; min-width: 112px; justify-content: center; }
+  .export-wrap[open] .export-btn { border-color: rgba(52,211,153,.45); }
+  .chev { color: var(--muted); font-size: .8rem; margin-left: 1px; }
+
+  .settings-menu {
+    position: absolute; right: 0; top: calc(100% + 8px); width: 338px; z-index: 30;
+    background: #151f32; border: 1px solid rgba(148,163,184,.22); border-radius: 14px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5); overflow: hidden; text-align: left;
+  }
+  .settings-head { padding: 15px 16px 12px; border-bottom: 1px solid var(--line); }
+  .settings-kicker {
+    color: var(--accent); font-size: .67rem; letter-spacing: .1em;
+    text-transform: uppercase; font-weight: 750;
+  }
+  .settings-title { font-size: 1rem; font-weight: 680; letter-spacing: -.01em; margin-top: 3px; }
+  .settings-sub { color: var(--muted); font-size: .76rem; line-height: 1.45; margin-top: 5px; }
+  .settings-col-list { padding: 6px; max-height: 280px; overflow-y: auto; }
+  .col-row {
+    display: flex; align-items: center; gap: 10px; min-height: 33px;
+    padding: 7px 10px; border-radius: 8px; cursor: grab; color: #d7e0ef;
+    font-size: .86rem;
+  }
+  .col-row:hover { background: rgba(148,163,184,.09); }
+  .col-row.dragging { opacity: 0.5; cursor: grabbing; }
+  .col-row.drag-over { border: 2px dashed var(--accent); }
+  .col-row input[type="checkbox"] { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .col-row .col-name { flex: 1; }
+  .col-row .drag-handle {
+    flex: 0 0 24px; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); cursor: grab; user-select: none;
+  }
+  .col-row .drag-handle:hover { color: var(--accent); }
+  .col-row .drag-handle svg { pointer-events: none; }
+  .settings-foot {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px 11px;
+    border-top: 1px solid var(--line); background: rgba(7,11,22,.22);
+  }
+  .text-btn {
+    border: 0; background: transparent; color: var(--muted); font: inherit;
+    font-size: .78rem; padding: 5px 6px; border-radius: 7px; cursor: pointer;
+  }
+  .text-btn:hover { color: var(--text); background: rgba(148,163,184,.1); }
+  .settings-count { flex: 1; text-align: right; color: var(--muted); font-size: .72rem; white-space: nowrap; }
+  .settings-admin { border-top: 1px solid var(--line); padding: 6px; }
+  .settings-manage {
+    width: 100%; display: flex; align-items: center; gap: 9px; padding: 9px 10px;
+    background: transparent; border: 0; border-radius: 8px; color: #d7e0ef;
+    font: inherit; font-size: .81rem; text-align: left; cursor: pointer;
+  }
+  .settings-manage:hover { background: rgba(148,163,184,.09); }
+  .settings-manage svg { color: var(--accent); flex: 0 0 auto; }
+  .settings-manage span:nth-child(2) { flex: 1; }
+  .role-badge {
+    color: #a7f3d0; background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.18);
+    border-radius: 999px; padding: 2px 7px; font-size: .64rem; font-weight: 650;
+    letter-spacing: .03em; white-space: nowrap;
+  }
+  .settings-menu form { margin: 0; }
+
+  .export-menu {
+    position: absolute; right: 0; top: calc(100% + 8px); width: 286px; z-index: 30;
+    background: #151f32; border: 1px solid rgba(148,163,184,.22); border-radius: 13px;
+    box-shadow: 0 18px 45px rgba(0,0,0,.45); padding: 6px; text-align: left;
+  }
+  .export-menu-head {
+    padding: 8px 10px 7px; color: var(--muted); font-size: .72rem;
+    text-transform: uppercase; letter-spacing: .08em; font-weight: 650;
+  }
+  .export-item {
+    display: flex; align-items: center; gap: 11px; padding: 10px;
+    border-radius: 9px; color: var(--text); text-decoration: none;
+  }
+  .export-item:hover { background: rgba(148,163,184,.10); text-decoration: none; }
+  .export-item strong { display: block; font-size: .88rem; font-weight: 600; }
+  .export-item small { display: block; color: var(--muted); font-size: .76rem; margin-top: 2px; }
+  .file-icon {
+    width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center;
+    font-size: .6rem; font-weight: 750; letter-spacing: -.03em; flex: 0 0 32px;
+  }
+  .file-icon.xlsx { background: rgba(52,211,153,.15); color: #34d399; }
+  .file-icon.csv { background: rgba(96,165,250,.15); color: #93c5fd; }
+  .export-menu-foot {
+    margin: 6px 6px 3px; padding: 9px 6px 3px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .72rem; line-height: 1.45;
+  }
+
+  .table-scroll { overflow-x: auto; }
+  #assetTable { min-width: 1080px; font-size: .86rem; }
+  #assetTable th, #assetTable td { padding: 10px 11px; }
+  .is-hidden { display: none !important; }
+  .name-link { font-weight: 600; }
+  .desc-cell { color: #b7c3d6; min-width: 160px; }
+  .date-cell { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .77rem; color: var(--muted); white-space: nowrap; }
+  .actions-head { width: 142px; }
+  .row-actions { text-align: right; white-space: nowrap; }
+  .row-actions .btn + .btn { margin-left: 5px; }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    padding: 24px; background: rgba(2,6,15,.74); backdrop-filter: blur(5px);
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal-panel {
+    width: 560px; max-width: 100%; max-height: 86vh; overflow-y: auto; margin: 0;
+    background: #131d2f; border: 1px solid rgba(148,163,184,.24); border-radius: 16px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+  }
+  .modal-head { display: flex; align-items: flex-start; gap: 16px; padding: 20px 20px 12px; }
+  .modal-head > div { flex: 1; }
+  .modal-head h2 { margin: 3px 0 0; font-size: 1.1rem; letter-spacing: -.01em; }
+  .modal-close {
+    width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 32px;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2);
+    color: var(--muted); font-size: 1.15rem; line-height: 1; cursor: pointer;
+  }
+  .modal-close:hover { color: var(--text); border-color: rgba(148,163,184,.4); }
+  .modal-sub { color: var(--muted); font-size: .82rem; line-height: 1.5; margin: 0; padding: 0 20px 14px; }
+  .modal-sub strong { color: #cbd5e1; font-weight: 600; }
+  .master-list { margin: 0 20px; border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+  .master-row {
+    display: grid; grid-template-columns: 1fr 92px; align-items: center; gap: 12px;
+    padding: 9px 13px; border-bottom: 1px solid rgba(148,163,184,.09);
+    font-size: .86rem; color: #d7e0ef;
+  }
+  .master-row:last-child { border-bottom: 0; }
+  .master-row:not(.master-head):hover { background: rgba(148,163,184,.05); }
+  .master-head {
+    color: var(--muted); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
+    font-weight: 650; background: rgba(7,11,22,.22); padding-top: 8px; padding-bottom: 8px;
+  }
+  .master-head span:last-child, .master-check { justify-self: end; }
+  .master-check { display: flex; align-items: center; justify-content: flex-end; gap: 8px; cursor: pointer; }
+  .master-check input[type="checkbox"] { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 9px; padding: 16px 20px 20px; }
+  .modal-error { color: #fda4af; font-size: .78rem; margin: 10px 20px 0; }
+  .modal-error[hidden] { display: none; }
+  body.modal-open { overflow: hidden; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(10px);
+    background: #1b263b; border: 1px solid rgba(52,211,153,.35); color: #d1fae5;
+    padding: 10px 16px; border-radius: 10px; font-size: .84rem; opacity: 0;
+    pointer-events: none; transition: .18s ease; z-index: 150;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .hint { color: var(--muted); font-size: .8rem; margin: 12px 2px 0; line-height: 1.5; }
+
+  @media (max-width: 860px) {
+    .settings-menu, .export-menu { width: min(338px, calc(100vw - 32px)); }
+    .modal-backdrop { padding: 14px; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+  <h1>
+    {% if show_all and not selected_type %}
+      All Assets
+    {% elif selected_type %}
+      {{ selected_type.name }}
+    {% else %}
+      Assets
+    {% endif %}
+  </h1>
+  <p class="lede">{{ total_shown }} result{{ total_shown|pluralize }} shown.</p>
+
+  <div class="list-toolbar">
+    <div class="tabs">
+      {% if show_all %}
+        <a class="btn {% if not selected_type %}btn-primary{% endif %}" href="{% url 'inventory:asset_list' %}">
+          All <span style="opacity:.75">{{ total_all }}</span>
+        </a>
+      {% endif %}
+      {% for t in types %}
+        <a class="btn {% if selected_type and selected_type.pk == t.pk %}btn-primary{% endif %}" href="?type={{ t.pk }}">
+          {{ t.name }}
+          <span style="opacity:.75">{% for name, total in type_counts.items %}{% if name == t.name %}{{ total }}{% endif %}{% endfor %}</span>
+        </a>
+      {% endfor %}
+    </div>
+
+    <div class="toolbar-actions">
+      <details class="settings-wrap" id="columnSettings">
+        <summary class="btn icon-btn" title="Customize Column" aria-label="Customize Column">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </summary>
+
+        <div class="settings-menu" aria-label="Customize Column">
+          <div class="settings-head">
+            <div class="settings-kicker">View settings</div>
+            <div class="settings-title">Customize Column</div>
+            <div class="settings-sub">
+              {% if default_all_columns %}All available columns are shown by default.{% else %}Core columns are shown by default; add any available column.{% endif %}
+              Uncheck a column to hide it from your grid. Drag to reorder.
+            </div>
+          </div>
+
+          <form method="post" action="{% url 'inventory:columns_save' %}" id="columnForm">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <div class="settings-col-list" id="columnList">
+              {% for column in columns %}
+                <label class="col-row" data-col="{{ column.key }}" draggable="true">
+                  <span class="drag-handle" title="Drag to reorder">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="3 9 3 15 3 9"></polyline>
+                      <polyline points="9 9 9 15 9 9"></polyline>
+                      <polyline points="15 9 15 15 15 9"></polyline>
+                    </svg>
+                  </span>
+                  <input type="checkbox" name="columns" value="{{ column.key }}" data-col="{{ column.key }}" class="column-toggle" {% if column.key in visible_keys %}checked{% endif %}>
+                  <span class="col-name">{{ column.label }}</span>
+                </label>
+              {% endfor %}
+            </div>
+            <div class="settings-foot">
+              <button class="text-btn" type="submit" name="reset" value="1" id="resetColumns">Reset</button>
+              <span class="settings-count" id="columnCount">{{ visible_count }} of {{ allowed_count }} columns shown</span>
+              <button class="btn btn-small btn-primary" type="submit" id="doneColumns">Done</button>
+            </div>
+          </form>
+
+          {% if can_manage_columns %}
+            <div class="settings-admin">
+              <button class="settings-manage" type="button" id="manageColumns">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span>Manage columns</span>
+                <span class="role-badge">Admin / Engineers</span>
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </details>
+
+      <details class="export-wrap" id="exportDetails">
+        <summary class="btn export-btn" title="Download the current asset view">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
+          </svg>
+          Export <span class="chev">▾</span>
+        </summary>
+        <div class="export-menu">
+          <div class="export-menu-head">Download current view</div>
+          <a class="export-item" href="{% url 'inventory:asset_export' %}?format=xlsx{% if export_query %}&{{ export_query }}{% endif %}" data-export-url="{% url 'inventory:asset_export' %}?format=xlsx{% if export_query %}&{{ export_query }}{% endif %}">
+            <span class="file-icon xlsx">XLSX</span>
+            <span><strong>Excel workbook</strong><small>.xlsx &middot; visible columns</small></span>
+          </a>
+          <a class="export-item" href="{% url 'inventory:asset_export' %}?format=csv{% if export_query %}&{{ export_query }}{% endif %}" data-export-url="{% url 'inventory:asset_export' %}?format=csv{% if export_query %}&{{ export_query }}{% endif %}">
+            <span class="file-icon csv">CSV</span>
+            <span><strong>CSV file</strong><small>.csv &middot; visible columns</small></span>
+          </a>
+          <div class="export-menu-foot">
+            Exports the rows currently shown, using the columns visible on screen.
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <section class="panel">
+    <form class="filters" method="get">
+      {% if selected_type %}<input type="hidden" name="type" value="{{ selected_type.pk }}">{% endif %}
+      <input type="search" name="q" value="{{ query }}" placeholder="Search name, description, custodian">
+      <select name="status">
+        <option value="">All statuses</option>
+        {% for value, label in statuses %}
+          <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Filter</button>
+      <a class="btn" href="{% url 'inventory:asset_list' %}">Reset</a>
+      <div class="spacer" style="flex:1"></div>
+      {% if perms.inventory.add_asset %}
+        <a class="btn btn-primary" href="{% url 'inventory:asset_create' %}">+ New asset</a>
+      {% endif %}
+    </form>
+
+    {% if assets %}
+      <div class="table-scroll">
+        <table id="assetTable">
+          <thead>
+            <tr>
+              {% for column in columns %}
+                <th data-col="{{ column.key }}" class="{% if column.key not in visible_keys %}is-hidden{% endif %}">{{ column.label }}</th>
+              {% endfor %}
+              <th class="actions-head"></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for asset in assets %}
+            <tr>
+              {% for column in columns %}
+                <td data-col="{{ column.key }}" class="{% if column.key not in visible_keys %}is-hidden{% endif %}{% if column.key == 'description' %} desc-cell{% elif column.key == 'added' or column.key == 'updated' %} date-cell{% endif %}">
+                  {% if column.key == "id" %}
+                    <span class="tag">#{{ asset.pk }}</span>
+                  {% elif column.key == "name" %}
+                    <a class="name-link" href="{{ asset.get_absolute_url }}">{{ asset.name }}</span>
+                  {% elif column.key == "type" %}
+                    {{ asset.asset_type|default:"—" }}
+                  {% elif column.key == "status" %}
+                    <span class="badge {{ asset.status_slug }}">{{ asset.status_label }}</span>
+                  {% elif column.key == "vendor" %}
+                    {% if asset.vendor %}
+                      <span class="badge">{{ asset.vendor.name }}</span>
+                    {% elif not asset.custodian %}
+                      <span class="tag">admin only</span>
+                    {% else %}
+                      —
+                    {% endif %}
+                  {% elif column.key == "custodian" %}
+                    {% if asset.custodian %}
+                      <span class="tag">{{ asset.custodian.get_username }}</span>
+                    {% else %}
+                      —
+                    {% endif %}
+                  {% elif column.key == "description" %}
+                    {{ asset.description|default:"—" }}
+                  {% elif column.key == "added" %}
+                    {{ asset.created_at|date:"Y-m-d H:i" }}
+                  {% elif column.key == "updated" %}
+                    {{ asset.updated_at|date:"Y-m-d H:i" }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              {% endfor %}
+              <td class="row-actions">
+                {% if asset.can_edit %}
+                  <a class="btn btn-small" href="{% url 'inventory:asset_edit' asset.pk %}">Edit</a>
+                {% endif %}
+                {% if asset.can_delete %}
+                  <a class="btn btn-small btn-danger" href="{% url 'inventory:asset_delete' asset.pk %}">Delete</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <p>No assets match your filters.</p>
+        {% if perms.inventory.add_asset %}
+          <a class="btn btn-primary" href="{% url 'inventory:asset_create' %}">Add an asset</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+
+  {% if can_manage_columns %}
+    <div class="modal-backdrop" id="columnModal" hidden>
+      <form class="modal-panel" method="post" action="{% url 'inventory:columns_manage' %}" id="columnModalForm">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div class="modal-head">
+          <div>
+            <div class="settings-kicker">Admin / Engineers</div>
+            <h2>Manage available columns</h2>
+          </div>
+          <button class="modal-close" type="button" id="closeColumnModal" aria-label="Close">&times;</button>
+        </div>
+        <p class="modal-sub">
+          All columns are available to users. Uncheck any column to remove it from every user's
+          <strong>Customize Column</strong> list. Users can only choose from the columns enabled here.
+        </p>
+        <div class="master-list">
+          <div class="master-row master-head"><span>Column</span><span>Available</span></div>
+          {% for column in all_columns %}
+            <label class="master-row">
+              <span>{{ column.label }}</span>
+              <span class="master-check">
+                <input type="checkbox" name="columns" value="{{ column.key }}" {% if column.key in allowed_keys %}checked{% endif %}>
+                Allow
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+        <p class="modal-error" id="columnModalError" hidden>Select at least one column.</p>
+        <div class="modal-actions">
+          <button class="btn" type="button" id="cancelColumnModal">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save columns</button>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+
+  <div class="toast" id="columnToast">Columns updated.</div>
+
+  <script>
+    (function () {
+      var settings = document.getElementById("columnSettings");
+      var exportDetails = document.getElementById("exportDetails");
+      var form = document.getElementById("columnForm");
+      var columnList = document.getElementById("columnList");
+      var countEl = document.getElementById("columnCount");
+      var exportLinks = document.querySelectorAll(".export-item[data-export-url]");
+      var modal = document.getElementById("columnModal");
+      var modalForm = document.getElementById("columnModalForm");
+      var modalError = document.getElementById("columnModalError");
+      var toastEl = document.getElementById("columnToast");
+      var toastTimer;
+      var saveTimer;
+      var dragSrcEl = null;
+
+      function toast(message) {
+        toastEl.textContent = message;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          toastEl.classList.remove("show");
+        }, 10000);
+      }
+
+      function checkedColumns() {
+        return Array.prototype.map.call(
+          form.querySelectorAll(".column-toggle:checked"),
+          function (box) { return box.value; }
+        );
+      }
+
+      function columnOrder() {
+        return Array.prototype.map.call(
+          columnList.querySelectorAll(".col-row"),
+          function (row) { return row.getAttribute("data-col"); }
+        );
+      }
+
+      function syncTable() {
+        var selected = new Set(checkedColumns());
+        document.querySelectorAll("#assetTable [data-col]").forEach(function (cell) {
+          cell.classList.toggle("is-hidden", !selected.has(cell.getAttribute("data-col")));
+        });
+      }
+
+      function syncExportLinks() {
+        var selected = checkedColumns();
+        exportLinks.forEach(function (link) {
+          var url = new URL(link.getAttribute("data-export-url"), window.location.origin);
+          if (selected.length) {
+            url.searchParams.set("cols", selected.join(","));
+          } else {
+            url.searchParams.delete("cols");
+          }
+          link.href = url.href;
+        });
+      }
+
+      function updateCount() {
+        var total = form.querySelectorAll(".column-toggle").length;
+        countEl.textContent = checkedColumns().length + " of " + total + " columns shown";
+      }
+
+      function syncView() {
+        syncTable();
+        syncExportLinks();
+        updateCount();
+      }
+
+      function csrfToken() {
+        var input = form.querySelector('input[name="csrfmiddlewaretoken"]');
+        return input ? input.value : "";
+      }
+
+      function saveColumns(reset, order) {
+        var data = new URLSearchParams();
+        data.set("csrfmiddlewaretoken", csrfToken());
+        if (reset) {
+          data.set("reset", "1");
+        } else {
+          checkedColumns().forEach(function (key) { data.append("columns", key); });
+        }
+        if (order) {
+          order.forEach(function (key) { data.append("order", key); });
+        }
+
+        return fetch(form.action, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrfToken()
+          },
+          body: data
+        }).then(function (response) {
+          return response.json().catch(function () { return {}; }).then(function (payload) {
+            if (!response.ok || !payload.ok) {
+              throw new Error(payload.error || "Could not save columns.");
+            }
+            return payload;
+          });
+        });
+      }
+
+      function queueSave(order) {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () {
+          saveColumns(false, order).catch(function (error) { toast(error.message); });
+        }, 350);
+      }
+
+      form.querySelectorAll(".column-toggle").forEach(function (box) {
+        box.addEventListener("change", function () {
+          if (!form.querySelector(".column-toggle:checked")) {
+            box.checked = true;
+            toast("Keep at least one column visible.");
+            return;
+          }
+          syncView();
+          queueSave();
+        });
+      });
+
+      document.getElementById("resetColumns").addEventListener("click", function (event) {
+        event.preventDefault();
+        clearTimeout(saveTimer);
+        saveColumns(true).then(function (payload) {
+          var selected = new Set(payload.columns || []);
+          form.querySelectorAll(".column-toggle").forEach(function (box) {
+            box.checked = selected.has(box.value);
+          });
+          syncView();
+          toast("Columns reset to the default view.");
+        }).catch(function (error) {
+          toast(error.message);
+        });
+      });
+
+      form.addEventListener("submit", function (event) {
+        clearTimeout(saveTimer);
+        if (!checkedColumns().length) {
+          event.preventDefault();
+          toast("Keep at least one column visible.");
+          return;
+        }
+        // Add order as hidden inputs
+        columnOrder().forEach(function (key) {
+          var input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "order";
+          input.value = key;
+          form.appendChild(input);
+        });
+        // Let form submit naturally
+      });
+
+      // --- Drag and drop for column reordering ---
+      function handleDragStart(e) {
+        dragSrcEl = this;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", this.getAttribute("data-col"));
+        this.classList.add("dragging");
+      }
+
+      function handleDragOver(e) {
+        if (e.preventDefault) e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        return false;
+      }
+
+      function handleDragEnter(e) {
+        this.classList.add("drag-over");
+      }
+
+      function handleDragLeave(e) {
+        this.classList.remove("drag-over");
+      }
+
+      function handleDrop(e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (dragSrcEl !== this) {
+          var srcIndex = Array.prototype.indexOf.call(columnList.querySelectorAll(".col-row"), dragSrcEl);
+          var dstIndex = Array.prototype.indexOf.call(columnList.querySelectorAll(".col-row"), this);
+          if (srcIndex < dstIndex) {
+            columnList.insertBefore(dragSrcEl, this.nextSibling);
+          } else {
+            columnList.insertBefore(dragSrcEl, this);
+          }
+          queueSave(columnOrder());
+        }
+        return false;
+      }
+
+      function handleDragEnd(e) {
+        columnList.querySelectorAll(".col-row").forEach(function (row) {
+          row.classList.remove("dragging", "drag-over");
+        });
+      }
+
+      columnList.querySelectorAll(".col-row").forEach(function (row) {
+        row.addEventListener("dragstart", handleDragStart, false);
+        row.addEventListener("dragenter", handleDragEnter, false);
+        row.addEventListener("dragover", handleDragOver, false);
+        row.addEventListener("dragleave", handleDragLeave, false);
+        row.addEventListener("drop", handleDrop, false);
+        row.addEventListener("dragend", handleDragEnd, false);
+      });
+
+      // Export links follow the on-screen column choices, even before a save finishes.
+      syncExportLinks();
+
+      settings.addEventListener("toggle", function () {
+        if (settings.open) exportDetails.removeAttribute("open");
+      });
+      exportDetails.addEventListener("toggle", function () {
+        if (exportDetails.open) settings.removeAttribute("open");
+      });
+
+      document.addEventListener("click", function (event) {
+        if (event.target.closest(".modal-backdrop")) return;
+        if (settings.open && !event.target.closest(".settings-wrap")) {
+          settings.removeAttribute("open");
+        }
+        if (exportDetails.open && !event.target.closest(".export-wrap")) {
+          exportDetails.removeAttribute("open");
+        }
+      });
+
+      document.querySelectorAll(".export-item").forEach(function (link) {
+        link.addEventListener("click", function () {
+          exportDetails.removeAttribute("open");
+        });
+      });
+
+      if (modal) {
+        var manageButton = document.getElementById("manageColumns");
+        var closeModal = function () {
+          modal.hidden = true;
+          document.body.classList.remove("modal-open");
+        };
+        manageButton.addEventListener("click", function () {
+          settings.removeAttribute("open");
+          modalError.hidden = true;
+          modal.hidden = false;
+          document.body.classList.add("modal-open");
+        });
+        document.getElementById("closeColumnModal").addEventListener("click", closeModal);
+        document.getElementById("cancelColumnModal").addEventListener("click", closeModal);
+        modal.addEventListener("click", function (event) {
+          if (event.target === modal) closeModal();
+        });
+        modalForm.addEventListener("submit", function (event) {
+          if (!modalForm.querySelector('input[name="columns"]:checked')) {
+            event.preventDefault();
+            modalError.hidden = false;
+          }
+        });
+      }
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key !== "Escape") return;
+        if (modal && !modal.hidden) {
+          modal.hidden = true;
+          document.body.classList.remove("modal-open");
+        }
+        settings.removeAttribute("open");
+        exportDetails.removeAttribute("open");
+      });
+    })();
+  </script>
+{% endblock %}

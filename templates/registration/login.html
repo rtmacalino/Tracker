@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in &middot; Tracker</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #e8eefc;
+      background: radial-gradient(900px 600px at 10% -10%, rgba(52,211,153,.12), transparent 60%),
+                  radial-gradient(900px 600px at 100% 0%, rgba(99,102,241,.16), transparent 58%),
+                  linear-gradient(160deg, #070b16, #0a1020);
+    }
+    .card {
+      width: 100%; max-width: 380px; padding: 32px; border-radius: 20px;
+      background: rgba(19,26,43,.85); border: 1px solid rgba(148,163,184,.16);
+      box-shadow: 0 26px 60px -24px rgba(0,0,0,.9);
+    }
+    h1 { margin: 0 0 6px; font-size: 1.5rem; letter-spacing: -.02em; }
+    p.sub { margin: 0 0 24px; color: #8b9bb8; font-size: .88rem; }
+    label { display: block; font-size: .76rem; text-transform: uppercase; letter-spacing: .08em; color: #8b9bb8; margin-bottom: 6px; font-weight: 600; }
+    input {
+      width: 100%; padding: 11px 13px; border-radius: 10px; font: inherit; font-size: .92rem;
+      color: #e8eefc; background: #0d1524; border: 1px solid rgba(148,163,184,.18);
+    }
+    input:focus { outline: 2px solid rgba(52,211,153,.5); outline-offset: 1px; border-color: transparent; }
+    .field { margin-bottom: 16px; }
+    button {
+      width: 100%; margin-top: 8px; padding: 12px; border: 0; border-radius: 10px; cursor: pointer;
+      font: inherit; font-weight: 650; color: #052e22;
+      background: linear-gradient(180deg, #34d399, #10b981);
+    }
+    button:hover { filter: brightness(1.06); }
+    .err { margin: 0 0 16px; padding: 11px 14px; border-radius: 10px; font-size: .85rem;
+           background: rgba(251,113,133,.12); border: 1px solid rgba(251,113,133,.3); color: #fb7185; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Tracker</h1>
+    <p class="sub">Sign in to manage the asset inventory.</p>
+    {% if form.errors %}
+      <p class="err">That username and password didn't match. Try again.</p>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_username">Username</label>
+        <input type="text" name="username" id="id_username" autofocus autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="id_password">Password</label>
+        <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit">Sign in</button>
+    </form>
+  </main>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ asset.name }} &middot; Tracker{% endblock %}
+{% block content %}
+  <h1>Delete asset?</h1>
+  <p class="lede">This permanently removes <strong>{{ asset.name }} (#{{ asset.pk }})</strong>.</p>
+  <section class="panel">
+    <form class="panel-body" method="post">
+      {% csrf_token %}
+      <div class="actions">
+        <button class="btn btn-danger" type="submit">Yes, delete</button>
+        <a class="btn" href="{{ asset.get_absolute_url }}">Cancel</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}
