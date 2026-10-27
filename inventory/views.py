@@ -380,13 +380,19 @@ def asset_attachment_upload(request, pk):
     if not _can_change(request.user, asset):
         raise PermissionDenied
 
+    return_to_edit = request.POST.get("return_to") == "edit"
+    destination = (
+        reverse("inventory:asset_edit", kwargs={"pk": asset.pk})
+        if return_to_edit
+        else asset.get_absolute_url()
+    )
     uploads = request.FILES.getlist("files")
     if not uploads:
         messages.error(request, "Choose at least one file to upload.")
-        return redirect(asset)
+        return redirect(destination)
     if len(uploads) > ATTACHMENT_MAX_FILES:
         messages.error(request, f"Upload no more than {ATTACHMENT_MAX_FILES} files at a time.")
-        return redirect(asset)
+        return redirect(destination)
 
     errors = []
     for uploaded in uploads:
@@ -399,7 +405,7 @@ def asset_attachment_upload(request, pk):
     if errors:
         for error in errors:
             messages.error(request, error)
-        return redirect(asset)
+        return redirect(destination)
 
     for uploaded in uploads:
         name = os.path.basename(uploaded.name).replace("\\", "_")[:255]
@@ -411,9 +417,7 @@ def asset_attachment_upload(request, pk):
             uploaded_by=request.user,
         )
     messages.success(request, f"{len(uploads)} attachment(s) uploaded.")
-    if request.POST.get("return_to") == "edit":
-        return redirect("inventory:asset_edit", pk=asset.pk)
-    return redirect(asset)
+    return redirect(destination)
 
 
 @login_required
