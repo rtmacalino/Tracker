@@ -22,7 +22,7 @@ Common optional settings:
 - `DJANGO_ALLOWED_HOSTS` (comma-separated host names; default includes `10.10.10.124,localhost,127.0.0.1`)
 - `DJANGO_CSRF_TRUSTED_ORIGINS` (comma-separated full origins; default `http://10.10.10.124`)
 - `DJANGO_TIME_ZONE` (default: `Asia/Manila`)
-- `DJANGO_SECURE_COOKIES` (defaults to enabled when `DJANGO_DEBUG=False`)
+- `DJANGO_SECURE_COOKIES` (default: `False` for compatibility with the current HTTP URL; set to `1` after HTTPS is configured)
 - `DJANGO_SECURE_SSL_REDIRECT` (default: `False`; enable only when HTTPS is correctly configured end-to-end)
 
 Generate a new secret key in a trusted environment, for example:
