@@ -123,10 +123,11 @@ EMAIL_BACKEND = os.environ.get(
     "DJANGO_EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
 )
 
-# Secure defaults for production. Set DJANGO_SECURE_COOKIES=0 only for local
-# HTTP development; production should terminate HTTPS and enable these flags.
-SESSION_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", not DEBUG)
-CSRF_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", not DEBUG)
+# Enable secure cookies when HTTPS is configured. The current deployment URL is
+# HTTP, so defaulting these flags on would prevent browsers from sending sessions.
+# Set DJANGO_SECURE_COOKIES=1 after HTTPS is configured end-to-end.
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", False)
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_SECURE_COOKIES", False)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
